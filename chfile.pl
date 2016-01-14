@@ -261,6 +261,48 @@ sub print_info {
 
 }
 
+# Cat mode of operation:
+# Print file contents / list directory contents.
+# args
+#   instance of Path::Tiny
+sub cat {
+
+    my $file = shift @_;
+
+    if ($file->is_dir) {
+        print join("\n\t",
+            "Contens of directory '".$file->canonpath."':",
+            sort map { decode_locale($_->basename) } $file->children)."\n";
+    } else {
+        print decode_locale_if_necessary($file->slurp);
+    }
+
+}
+
+# Delete mode of operation:
+# Remove file or directory.
+# args
+#   instance of Path::Tiny
+sub rm {
+
+    my $file = shift @_;
+
+    if ($file->is_dir) {
+        if(rmdir($file->canonpath)) {
+            print_info("Removed directory '".$file->canonpath."'.");
+        } else {
+            die decode_locale_if_necessary($!);
+        }
+    } else {
+        if ($file->remove) {
+            print_info("Removed file '".$file->canonpath."'.");
+        } else {
+            die decode_locale_if_necessary($!);
+        }
+    }
+
+}
+
 
 
 #
@@ -299,32 +341,10 @@ try {
         try {
 
             # Cat
-            if ($opts->{'cat'}) {
-                if ($file->is_dir) {
-                    print join("\n\t",
-                        "Contens of directory '".$file->canonpath."':",
-                        sort map { decode_locale($_->basename) } $file->children)."\n";
-                } else {
-                    print decode_locale_if_necessary($file->slurp);
-                }
-            }
+            cat($file) if ($opts->{'cat'});
 
             # Delete
-            if ($opts->{'rm'}) {
-                if ($file->is_dir) {
-                    if(rmdir($file->canonpath)) {
-                        print_info("Removed directory '".$file->canonpath."'.");
-                    } else {
-                        die decode_locale_if_necessary($!);
-                    }
-                } else {
-                    if ($file->remove) {
-                        print_info("Removed file '".$file->canonpath."'.");
-                    } else {
-                        die decode_locale_if_necessary($!);
-                    }
-                }
-            }
+            rm($file) if ($opts->{'rm'});
 
         } catch {
             print_error("Skipping path '".$file->canonpath."', processing failed: "
