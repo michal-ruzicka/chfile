@@ -20,13 +20,23 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
-use File::Spec;
+use File::chmod qw(symchmod getsymchmod);
 use FindBin;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
 use IO::Handle;
 use Path::Tiny;
 use Scalar::Util qw(blessed);
+use Stat::lsMode;
 use Try::Tiny;
+
+# It is recommended that you explicitly set $File::chmod::UMASK
+# as the default will change in the future
+#
+# 0 is recommended to behave like system chmod
+# 1 if you want File::chmod to apply your environment set umask.
+# 2 is how we detect that it's internally set, undef will become the
+# default in the future, eventually a lexicaly scoped API may be designed
+$File::chmod::UMASK = 0;
 
 
 
@@ -166,8 +176,6 @@ sub check_options {
 
     print_usage_and_exit(5, 'No files to work on.')
             unless (scalar(@files) > 0);
-
-    # TODO – check chmod argument format
 
 }
 
@@ -363,6 +371,26 @@ sub mode_chgrp {
 
 }
 
+sub mode_chmod {
+
+    my ($file, $mode) = @_;
+
+    try {
+        # Is x-bit set somewhere now?
+        if (File::chmod::getmod($file->canonpath) & 0111) {
+            $mode =~ s/X/x/g;
+        } else {
+            $mode =~ s/X//g;
+        }
+        symchmod($mode, $file->canonpath);
+        print_info("Changed permissions on file '".$file->canonpath."' by '$mode' to '".format_mode(File::chmod::getmod($file->canonpath))."'.");
+    } catch {
+        die "Change permissions failed on file '".$file->canonpath."': "
+            .decode_locale_if_necessary($_);
+    };
+
+}
+
 # Delete mode of operation:
 # Remove file or directory.
 # args
@@ -432,6 +460,9 @@ try {
 
             # Change group
             mode_chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
+
+            # Change permissions
+            mode_chmod($file, $opts->{'chmod'}) if ($opts->{'chmod'});
 
             # Delete
             mode_rm($file) if ($opts->{'rm'});
