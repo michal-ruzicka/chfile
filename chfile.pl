@@ -35,16 +35,13 @@ use Try::Tiny;
 # Global configuration
 #
 my @files = ();
-my $opts = {
-    'cat' => 1,
-};
+my $opts = {};
 my @opts_def = (
     'chown|o=s',
     'chgrp|g=s',
     'chmod|p=s',
     'cat|c',
-    'rm|d' => sub { delete $opts->{'cat'},
-                    $opts->{'rm'} = 1 },
+    'rm|d',
     'help|h',
 );
 
@@ -147,6 +144,10 @@ sub print_usage_and_exit {
 # Check validity of provided arguments. In case of an error exit with help
 # message.
 sub check_options {
+
+    # If no mode is specified default to cat mode
+    $opts->{'cat'} = 1
+        if (scalar(keys($opts)) == 0);
 
     print_usage_and_exit() if ($opts->{'help'});
 
