@@ -43,10 +43,7 @@ my @opts_def = (
     'chgrp|g=s',
     'chmod|p=s',
     'cat|c',
-    'rm|d' => sub { delete $opts->{'chown'},
-                    delete $opts->{'chgrp'},
-                    delete $opts->{'chmod'},
-                    $opts->{'cat'} = 0,
+    'rm|d' => sub { delete $opts->{'cat'},
                     $opts->{'rm'} = 1 },
     'help|h',
 );
@@ -152,7 +149,13 @@ sub print_usage_and_exit {
 sub check_options {
 
     print_usage_and_exit() if ($opts->{'help'});
-    print_usage_and_exit(2, 'No files to work on.') unless (scalar(@files) > 0);
+
+    print_usage_and_exit(2, 'Option `--rm` is not compatible with another commands.')
+            if ($opts->{'rm'} and scalar(keys($opts)) != 1);
+
+    print_usage_and_exit(3, 'No files to work on.')
+            unless (scalar(@files) > 0);
+
     # TODO – check chown argument format
     # TODO – check chgrp argument format
     # TODO – check chmod argument format
