@@ -20,7 +20,6 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
-use Data::Dumper;
 use File::Spec;
 use FindBin;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
@@ -38,12 +37,14 @@ my @files = ();
 my $opts = {};
 my @opts_def = (
     'chown|o=s',
+    'chusr|u=s',
     'chgrp|g=s',
     'chmod|p=s',
     'cat|c',
     'rm|d',
     'help|h',
 );
+my $chown_re = qr/(\A[^:\s]+):([^:\s]+)\z/;
 
 
 #
@@ -71,8 +72,7 @@ sub print_usage_and_exit {
             join(' ',
                  "$FindBin::Script",
                  "[ --cat|-c ]",
-                 "[ --chown|-o <new_owner> ]",
-                 "[ --chgrp|-g <new_group> ]",
+                 "{ [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] }",
                  "[ --chmod|-p <new_permissions> ]",
                  "--",
                  "file [ file ... ]",
@@ -119,7 +119,10 @@ sub print_usage_and_exit {
                  "Show contents of the files.",
                  "This is the default mode of operations if no other options are specified."),
             join("\t\n\t\t",
-                 "-o, --chown <new_owner>",
+                 "-o, --chown <new_owner>:<new_group>",
+                 "Change owner and group of the file."),
+            join("\t\n\t\t",
+                 "-u, --chusr <new_owner>",
                  "Change owner of the file."),
             join("\t\n\t\t",
                  "-g, --chgrp <new_group>",
@@ -154,11 +157,16 @@ sub check_options {
     print_usage_and_exit(2, 'Option `--rm` is not compatible with another commands.')
             if ($opts->{'rm'} and scalar(keys($opts)) != 1);
 
-    print_usage_and_exit(3, 'No files to work on.')
+    if ($opts->{'chown'}) {
+        print_usage_and_exit(3, 'Option `--chown` is mutually exclusive with `--chusr` and `--chgrp` options.')
+                if (defined($opts->{'chusr'}) or defined($opts->{'chgrp'}));
+        print_usage_and_exit(4, 'Invalid format of `--chown` parameter.')
+                unless ($opts->{'chown'} =~ $chown_re);
+    }
+
+    print_usage_and_exit(5, 'No files to work on.')
             unless (scalar(@files) > 0);
 
-    # TODO – check chown argument format
-    # TODO – check chgrp argument format
     # TODO – check chmod argument format
 
 }
@@ -266,7 +274,7 @@ sub print_info {
 # Print file contents / list directory contents.
 # args
 #   instance of Path::Tiny
-sub cat {
+sub mode_cat {
 
     my $file = shift @_;
 
@@ -280,12 +288,64 @@ sub cat {
 
 }
 
+# Change owner and group mode of operation:
+# Change owner and group of given file to given user and group.
+# args
+#   instance of Path::Tiny
+#   user and group name as string <user>:<group>
+sub mode_chown {
+
+    my ($file, $usergroup) = @_;
+
+    my ($user, $gname) = $usergroup =~ $chown_re;
+
+    my $uid = getpwnam "$user";
+    my $gid = getgrnam "$gname";
+
+    unless (defined($uid)) {
+        die "User '$user' does not exists.";
+    }
+    unless (defined($gid)) {
+        die "Group '$gname' does not exists.";
+    }
+
+    if (chown($uid, $gid, $file->canonpath) > 0) {
+        print_info("Changed ownership of file '".$file->canonpath."' to user '$user' and group '$gname'.");
+    } else {
+        die "Change ownership failed on file '".$file->canonpath."'";
+    }
+
+}
+
+# Change owner mode of operation:
+# Change owner of given file to given user.
+# args
+#   instance of Path::Tiny
+#   user name as string
+sub mode_chusr {
+
+    my ($file, $user) = @_;
+
+    my $uid = getpwnam "$user";
+
+    unless (defined($uid)) {
+        die "User '$user' does not exists.";
+    }
+
+    if (chown($uid, -1, $file->canonpath) > 0) {
+        print_info("Changed owner on file '".$file->canonpath."' to '$user'.");
+    } else {
+        die "Change owner failed on file '".$file->canonpath."'";
+    }
+
+}
+
 # Change group mode of operation:
 # Change group of given file to given group.
 # args
 #   instance of Path::Tiny
 #   group name as string
-sub chgrp {
+sub mode_chgrp {
 
     my ($file, $gname) = @_;
 
@@ -307,7 +367,7 @@ sub chgrp {
 # Remove file or directory.
 # args
 #   instance of Path::Tiny
-sub rm {
+sub mode_rm {
 
     my $file = shift @_;
 
@@ -353,9 +413,6 @@ try {
 my $rv = 0;
 try {
 
-    print_info(Dumper($opts));
-    print_info(scalar(Dumper(@files)));
-
     foreach my $f (@files) {
 
         my $file = path($f);
@@ -365,13 +422,19 @@ try {
         try {
 
             # Cat
-            cat($file) if ($opts->{'cat'});
+            mode_cat($file) if ($opts->{'cat'});
+
+            # Change owner and group
+            mode_chown($file, $opts->{'chown'}) if ($opts->{'chown'});
+
+            # Change owner
+            mode_chusr($file, $opts->{'chusr'}) if ($opts->{'chusr'});
 
             # Change group
-            chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
+            mode_chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
 
             # Delete
-            rm($file) if ($opts->{'rm'});
+            mode_rm($file) if ($opts->{'rm'});
 
         } catch {
             print_error("Skipping path '".$file->canonpath."', processing failed: "
