@@ -107,6 +107,12 @@ sub print_usage_and_exit {
             ),
             join(' ',
                  "$FindBin::Script",
+                 "-d",
+                 "<input_file>",
+                 "<input_dir>",
+            ),
+            join(' ',
+                 "$FindBin::Script",
                  "--help",
             ),
         ),
@@ -287,9 +293,10 @@ try {
 
         print_info "Processing path '".$file->canonpath."'." if (scalar(@files) > 1);
 
-        # Cat
-        if ($opts->{'cat'}) {
-            try {
+        try {
+
+            # Cat
+            if ($opts->{'cat'}) {
                 if ($file->is_dir) {
                     print join("\n\t",
                         "Contens of directory '".$file->canonpath."':",
@@ -297,12 +304,30 @@ try {
                 } else {
                     print decode_locale_if_necessary($file->slurp);
                 }
-            } catch {
-                print_error("Skipping path '".$file->canonpath."', processing failed: "
-                            .format_path_tiny_error($_));
-                $rv++;
-            };
-        }
+            }
+
+            # Delete
+            if ($opts->{'rm'}) {
+                if ($file->is_dir) {
+                    if(rmdir($file->canonpath)) {
+                        print_info("Removed directory '".$file->canonpath."'.");
+                    } else {
+                        die decode_locale_if_necessary($!);
+                    }
+                } else {
+                    if ($file->remove) {
+                        print_info("Removed file '".$file->canonpath."'.");
+                    } else {
+                        die decode_locale_if_necessary($!);
+                    }
+                }
+            }
+
+        } catch {
+            print_error("Skipping path '".$file->canonpath."', processing failed: "
+                        .format_path_tiny_error($_));
+            $rv++;
+        };
 
     }
 
