@@ -280,6 +280,29 @@ sub cat {
 
 }
 
+# Change group mode of operation:
+# Change group of given file to given group.
+# args
+#   instance of Path::Tiny
+#   group name as string
+sub chgrp {
+
+    my ($file, $gname) = @_;
+
+    my $gid = getgrnam "$gname";
+
+    unless (defined($gid)) {
+        die "Group '$gname' does not exists.";
+    }
+
+    if (chown(-1, $gid, $file->canonpath) > 0) {
+        print_info("Changed group on file '".$file->canonpath."' to '$gname'.");
+    } else {
+        die "Change group failed on file '".$file->canonpath."'";
+    }
+
+}
+
 # Delete mode of operation:
 # Remove file or directory.
 # args
@@ -343,6 +366,9 @@ try {
 
             # Cat
             cat($file) if ($opts->{'cat'});
+
+            # Change group
+            chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
 
             # Delete
             rm($file) if ($opts->{'rm'});
