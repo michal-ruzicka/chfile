@@ -13,7 +13,10 @@ use utf8;
 
 #
 # Any filesystem path matching any of patterns defined bellow will be allowed to
-# be manipulated with this tool.
+# be manipulated with this tool. Any filesystem path mismatching all the
+# patterns will be reject from processing with this tool.
+#
+# *If NO PATTERN is configured ALL file paths CAN BE manipulated!*
 #
 # (Keep the definition after ‘use utf8’ to be able to directly define file paths
 # using Unicode characters.)
@@ -23,7 +26,8 @@ my @allowed_filepath_patterns_re = (
     # Allow access to contents of .../testfiles/ directory *but not* to testfiles
     # directory itself (disallow user to delete / change permissions etc. of
     # testfiles directory itself, only allow manipulation of its contents).
-    qr{\A/mnt/example/chfile.git/testfiles/.+\z},
+    #
+    #qr{\A/mnt/example/chfile.git/testfiles/.+\z},
 
     # Allow access to contents of .../testfiles/ directory *and* to testfiles
     # directory itself (allow user to also delete / change permissions etc. on
@@ -31,10 +35,12 @@ my @allowed_filepath_patterns_re = (
     # The ‘(\z|/.+\z)’ construction is necessary to mismatch files like
     # testfile_some_longe_filename in the same directory as testfiles directory
     # itself (i.e. /mnt/example/chfile.git/ in this example).
-    qr{\A/mnt/example/chfile.git/testfiles(\z|/.+\z)},
+    #
+    #qr{\A/mnt/example/chfile.git/testfiles(\z|/.+\z)},
 
     # Definition of directory using Unicode characters.
-    qr{\A/mnt/example/chfile.git/testfiles/Šíleně žluťoučký kůň(\z|/.+\z)},
+    #
+    #qr{\A/mnt/example/chfile.git/testfiles/Šíleně žluťoučký kůň(\z|/.+\z)},
 
 );
 
@@ -423,16 +429,20 @@ sub real_path_dereference_symlinks_but_last {
 
 }
 
-# Check if final real target of given path matches at least one allowed pattern.
+# Check if final real target of given path matches at least one allowed pattern
+# if any is configured.
 #
 # args
 #   instance of Path::Tiny
 # returns
-#   1 if the given filesystem path target matches at least one allowed pattern;
+#   1 if the given filesystem path target matches at least one allowed pattern
+#     or no pattern is defined at all;
 #   0 otherwise
 sub is_allowed_target_manipulation {
 
     my $file = shift @_;
+
+    return 1 if (scalar(@allowed_filepath_patterns_re) == 0);
 
     my $target_real_path = real_path_dereference_all_symlinks($file->canonpath);
 
@@ -447,16 +457,19 @@ sub is_allowed_target_manipulation {
 
 # Check if final real object of given path (i.e. the final dir/file/... or
 # symlink itself if the symlink is the last component of the given path) matches
-# at least one allowed pattern.
+# at least one allowed pattern if any is configured.
 #
 # args
 #   instance of Path::Tiny
 # returns
-#   1 if the given filesystem path object matches at least one allowed pattern;
+#   1 if the given filesystem path object matches at least one allowed pattern
+#     or no pattern is defined at all;
 #   0 otherwise
 sub is_allowed_object_manipulation {
 
     my $file = shift @_;
+
+    return 1 if (scalar(@allowed_filepath_patterns_re) == 0);
 
     my $object_real_path = real_path_dereference_symlinks_but_last($file->canonpath);
 
