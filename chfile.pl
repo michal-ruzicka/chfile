@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/usr/bin/perl
 
 use strict;
 use warnings;
@@ -429,6 +429,21 @@ sub real_path_dereference_symlinks_but_last {
 
 }
 
+# Check if the tool runs in restricted mode, i.e. if only selected file paths
+# are allowed to be manipulated.
+#
+# returns
+#   1 if the tool runs in restricted mode, 0 otherwise
+sub is_in_restricted_mode {
+
+    if (scalar(@allowed_filepath_patterns_re) > 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+
+}
+
 # Check if final real target of given path matches at least one allowed pattern
 # if any is configured.
 #
@@ -442,7 +457,7 @@ sub is_allowed_target_manipulation {
 
     my $file = shift @_;
 
-    return 1 if (scalar(@allowed_filepath_patterns_re) == 0);
+    return 1 unless (is_in_restricted_mode());
 
     my $target_real_path = real_path_dereference_all_symlinks($file->canonpath);
 
@@ -469,7 +484,7 @@ sub is_allowed_object_manipulation {
 
     my $file = shift @_;
 
-    return 1 if (scalar(@allowed_filepath_patterns_re) == 0);
+    return 1 unless (is_in_restricted_mode());
 
     my $object_real_path = real_path_dereference_symlinks_but_last($file->canonpath);
 
@@ -578,6 +593,9 @@ sub mode_chgrp {
 sub mode_chmod {
 
     my ($file, $mode) = @_;
+
+    die "Manipulation of 's' and 't' permissions is not allowed.\n"
+        if (is_in_restricted_mode() and $mode =~ /[st]/);
 
     try {
         # Is x-bit set somewhere now?
