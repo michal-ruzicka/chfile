@@ -4,6 +4,51 @@ use strict;
 use warnings;
 use utf8;
 
+
+
+################################################################################
+# Users' tool configuration                                                    #
+################################################################################
+#                                                                              #
+
+#
+# Any filesystem path matching any of patterns defined bellow will be allowed to
+# be manipulated with this tool. Any filesystem path mismatching all the
+# patterns will be reject from processing with this tool.
+#
+# *If NO PATTERN is configured ALL file paths CAN BE manipulated!*
+#
+# (Keep the definition after ‘use utf8’ to be able to directly define file paths
+# using Unicode characters.)
+#
+my @allowed_filepath_patterns_re = (
+
+    # Allow access to contents of .../testfiles/ directory *but not* to testfiles
+    # directory itself (disallow user to delete / change permissions etc. of
+    # testfiles directory itself, only allow manipulation of its contents).
+    #
+    #qr{\A/mnt/example/chfile.git/testfiles/.+\z},
+
+    # Allow access to contents of .../testfiles/ directory *and* to testfiles
+    # directory itself (allow user to also delete / change permissions etc. on
+    # testfiles directory itself)
+    # The ‘(\z|/.+\z)’ construction is necessary to mismatch files like
+    # testfile_some_longe_filename in the same directory as testfiles directory
+    # itself (i.e. /mnt/example/chfile.git/ in this example).
+    #
+    #qr{\A/mnt/example/chfile.git/testfiles(\z|/.+\z)},
+
+    # Definition of directory using Unicode characters.
+    #
+    #qr{\A/mnt/example/chfile.git/testfiles/Šíleně žluťoučký kůň(\z|/.+\z)},
+
+);
+
+#                                                                              #
+################################################################################
+
+
+
 # Set encoding translation according to system locale.
 use Encode;
 use Encode::Locale;
@@ -20,6 +65,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
+use Cwd;
 use File::chmod qw(symchmod getsymchmod);
 use FindBin;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
@@ -278,6 +324,164 @@ sub print_info {
 
 }
 
+# Path to absolute real path conversion with normalization and real filesystem
+# solving of ALL symlinks / all symlinks BUT THE LAST symlink.
+#
+# 1. path normalization
+#
+# Path normalization is tricky and impossible without filesystem checks: For
+# example having directory structure
+#
+#   ├── dir
+#   │   ├── file
+#   │   └── sub_dir
+#   │       ├── file
+#   │       ├── sub_link_to_file -> file
+#   │       ├── sub_link_to_sub_dir -> ../sub_dir
+#   │       └── sub_sub_dir
+#   │           └── file
+#   └──  link_to_file -> dir/file
+#
+# and path specifications
+#
+#   dir/../dir/file
+#
+# it is not enough to simply collapse dir/../dir/ to dir/ as it will not
+# correctly work for links, i.e. collapsing link_to_sub_dir/../link_to_sub_dir/
+# to link_to_sub_dir/ will change the path target:
+#
+#   $ ls dir/../dir/file
+#   dir/../dir/file        <~~ this is file dir/file
+#
+#   $ ls dir/file
+#   dir/file               <~~ this is file dir/file
+#
+#   $ ls link_to_sub_dir/../link_to_sub_dir/file
+#   ls: cannot access link_to_sub_dir/../link_to_sub_dir/file: No such file or directory
+#
+#   $ ls link_to_sub_dir/file
+#   link_to_sub_dir/file   <~~ this is file dir/sub_dir/file
+#
+# 2. resolving symlinks
+#
+# Two methods of symlink solving are introduced:
+#
+# – The first resolves ALL symlinks including the last component of the path.
+#
+#   The method is useful to work with the target file/directory (to read
+#   contents of the target file/directory, to set attributes/permissions/... on
+#   the target file/directory etc.).
+#
+#   real_path_dereference_all_symlinks($path):
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir
+#     result    /.../dir/sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_link_to_file
+#     result    /.../dir/sub_dir/file
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_sub_dir
+#     result    /.../dir/sub_dir/sub_sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/file
+#     result    /.../dir/sub_dir/file
+#
+# – The second method resolves ALL symlinks BUT the last component of the path.
+#
+#   This method is useful to manipulate the symlink itself (to delete the
+#   symlink, for example) but not the target file/directory.
+#
+#   real_path_dereference_symlinks_but_last($path):
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir
+#     result    /.../dir/sub_dir/sub_link_to_sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_link_to_file
+#     result    /.../dir/sub_dir/sub_link_to_file
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_sub_dir
+#     result    /.../dir/sub_dir/sub_sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/file
+#     result    /.../dir/sub_dir/file
+#
+# args
+#   path to normalize as string
+# returns
+#   normalized path with all symlinks resolved, i.e. even the last symlink in
+#   the path will be resolved
+sub real_path_dereference_all_symlinks {
+
+    my $path = shift @_;
+
+    return decode_locale_if_necessary(Cwd::realpath($path));
+
+}
+# args
+#   path to normalize as string
+# returns
+#   normalized path with all symlinks but the last one resolved
+sub real_path_dereference_symlinks_but_last {
+
+    my $path = shift @_;
+
+    return path($path)->realpath;
+
+}
+
+# Check if final real target of given path matches at least one allowed pattern
+# if any is configured.
+#
+# args
+#   instance of Path::Tiny
+# returns
+#   1 if the given filesystem path target matches at least one allowed pattern
+#     or no pattern is defined at all;
+#   0 otherwise
+sub is_allowed_target_manipulation {
+
+    my $file = shift @_;
+
+    return 1 if (scalar(@allowed_filepath_patterns_re) == 0);
+
+    my $target_real_path = real_path_dereference_all_symlinks($file->canonpath);
+
+    my $allowed = 0;
+    foreach my $allowed_re (@allowed_filepath_patterns_re) {
+        $allowed = 1 if $target_real_path =~ $allowed_re;
+    }
+
+    return $allowed;
+
+}
+
+# Check if final real object of given path (i.e. the final dir/file/... or
+# symlink itself if the symlink is the last component of the given path) matches
+# at least one allowed pattern if any is configured.
+#
+# args
+#   instance of Path::Tiny
+# returns
+#   1 if the given filesystem path object matches at least one allowed pattern
+#     or no pattern is defined at all;
+#   0 otherwise
+sub is_allowed_object_manipulation {
+
+    my $file = shift @_;
+
+    return 1 if (scalar(@allowed_filepath_patterns_re) == 0);
+
+    my $object_real_path = real_path_dereference_symlinks_but_last($file->canonpath);
+
+    my $allowed = 0;
+    foreach my $allowed_re (@allowed_filepath_patterns_re) {
+        $allowed = 1 if $object_real_path =~ $allowed_re;
+    }
+
+    return $allowed;
+
+}
+
 # Cat mode of operation:
 # Print file contents / list directory contents.
 # args
@@ -449,23 +653,35 @@ try {
 
         try {
 
-            # Cat
-            mode_cat($file) if ($opts->{'cat'});
+            if (is_allowed_target_manipulation($file)) {
 
-            # Change owner and group
-            mode_chown($file, $opts->{'chown'}) if ($opts->{'chown'});
+                # Cat
+                mode_cat($file) if ($opts->{'cat'});
 
-            # Change owner
-            mode_chusr($file, $opts->{'chusr'}) if ($opts->{'chusr'});
+                # Change owner and group
+                mode_chown($file, $opts->{'chown'}) if ($opts->{'chown'});
 
-            # Change group
-            mode_chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
+                # Change owner
+                mode_chusr($file, $opts->{'chusr'}) if ($opts->{'chusr'});
 
-            # Change permissions
-            mode_chmod($file, $opts->{'chmod'}) if ($opts->{'chmod'});
+                # Change group
+                mode_chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
 
-            # Delete
-            mode_rm($file) if ($opts->{'rm'});
+                # Change permissions
+                mode_chmod($file, $opts->{'chmod'}) if ($opts->{'chmod'});
+
+            } else {
+                die "Access to '".real_path_dereference_all_symlinks($file->canonpath)."' is not allowed.";
+            }
+
+            if (is_allowed_object_manipulation($file)) {
+
+                # Delete
+                mode_rm($file) if ($opts->{'rm'});
+
+            } else {
+                die "Access to '".real_path_dereference_symlinks_but_last($file->canonpath)."' is not allowed.";
+            }
 
         } catch {
             print_error("Skipping path '".$file->canonpath."', processing failed: "
