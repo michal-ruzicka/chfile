@@ -4,6 +4,45 @@ use strict;
 use warnings;
 use utf8;
 
+
+
+################################################################################
+# Users' tool configuration                                                    #
+################################################################################
+#                                                                              #
+
+#
+# Any filesystem path matching any of patterns defined bellow will be allowed to
+# be manipulated with this tool.
+#
+# (Keep the definition after ‘use utf8’ to be able to directly define file paths
+# using Unicode characters.)
+#
+my @allowed_filepath_patterns_re = (
+
+    # Allow access to contents of .../testfiles/ directory *but not* to testfiles
+    # directory itself (disallow user to delete / change permissions etc. of
+    # testfiles directory itself, only allow manipulation of its contents).
+    qr{\A/mnt/example/chfile.git/testfiles/.+\z},
+
+    # Allow access to contents of .../testfiles/ directory *and* to testfiles
+    # directory itself (allow user to also delete / change permissions etc. on
+    # testfiles directory itself)
+    # The ‘(\z|/.+\z)’ construction is necessary to mismatch files like
+    # testfile_some_longe_filename in the same directory as testfiles directory
+    # itself (i.e. /mnt/example/chfile.git/ in this example).
+    qr{\A/mnt/example/chfile.git/testfiles(\z|/.+\z)},
+
+    # Definition of directory using Unicode characters.
+    qr{\A/mnt/example/chfile.git/testfiles/Šíleně žluťoučký kůň(\z|/.+\z)},
+
+);
+
+#                                                                              #
+################################################################################
+
+
+
 # Set encoding translation according to system locale.
 use Encode;
 use Encode::Locale;
@@ -384,6 +423,52 @@ sub real_path_dereference_symlinks_but_last {
 
 }
 
+# Check if final real target of given path matches at least one allowed pattern.
+#
+# args
+#   instance of Path::Tiny
+# returns
+#   1 if the given filesystem path target matches at least one allowed pattern;
+#   0 otherwise
+sub is_allowed_target_manipulation {
+
+    my $file = shift @_;
+
+    my $target_real_path = real_path_dereference_all_symlinks($file->canonpath);
+
+    my $allowed = 0;
+    foreach my $allowed_re (@allowed_filepath_patterns_re) {
+        $allowed = 1 if $target_real_path =~ $allowed_re;
+    }
+
+    return $allowed;
+
+}
+
+# Check if final real object of given path (i.e. the final dir/file/... or
+# symlink itself if the symlink is the last component of the given path) matches
+# at least one allowed pattern.
+#
+# args
+#   instance of Path::Tiny
+# returns
+#   1 if the given filesystem path object matches at least one allowed pattern;
+#   0 otherwise
+sub is_allowed_object_manipulation {
+
+    my $file = shift @_;
+
+    my $object_real_path = real_path_dereference_symlinks_but_last($file->canonpath);
+
+    my $allowed = 0;
+    foreach my $allowed_re (@allowed_filepath_patterns_re) {
+        $allowed = 1 if $object_real_path =~ $allowed_re;
+    }
+
+    return $allowed;
+
+}
+
 # Cat mode of operation:
 # Print file contents / list directory contents.
 # args
@@ -555,23 +640,35 @@ try {
 
         try {
 
-            # Cat
-            mode_cat($file) if ($opts->{'cat'});
+            if (is_allowed_target_manipulation($file)) {
 
-            # Change owner and group
-            mode_chown($file, $opts->{'chown'}) if ($opts->{'chown'});
+                # Cat
+                mode_cat($file) if ($opts->{'cat'});
 
-            # Change owner
-            mode_chusr($file, $opts->{'chusr'}) if ($opts->{'chusr'});
+                # Change owner and group
+                mode_chown($file, $opts->{'chown'}) if ($opts->{'chown'});
 
-            # Change group
-            mode_chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
+                # Change owner
+                mode_chusr($file, $opts->{'chusr'}) if ($opts->{'chusr'});
 
-            # Change permissions
-            mode_chmod($file, $opts->{'chmod'}) if ($opts->{'chmod'});
+                # Change group
+                mode_chgrp($file, $opts->{'chgrp'}) if ($opts->{'chgrp'});
 
-            # Delete
-            mode_rm($file) if ($opts->{'rm'});
+                # Change permissions
+                mode_chmod($file, $opts->{'chmod'}) if ($opts->{'chmod'});
+
+            } else {
+                die "Access to '".real_path_dereference_all_symlinks($file->canonpath)."' is not allowed.";
+            }
+
+            if (is_allowed_object_manipulation($file)) {
+
+                # Delete
+                mode_rm($file) if ($opts->{'rm'});
+
+            } else {
+                die "Access to '".real_path_dereference_symlinks_but_last($file->canonpath)."' is not allowed.";
+            }
 
         } catch {
             print_error("Skipping path '".$file->canonpath."', processing failed: "
