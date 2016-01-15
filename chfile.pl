@@ -147,19 +147,52 @@ sub print_usage_and_exit {
         join("\n\t", 'Examples:',
             join(' ',
                  "$FindBin::Script",
-                 "<input_file>",
-                 "<input_dir>",
+                 "testfiles/",
+                 "testfiles/link_to_file",
             ),
             join(' ',
                  "$FindBin::Script",
                  "--cat",
-                 "<input_file>",
+                 "testfiles/link_to_file",
             ),
             join(' ',
                  "$FindBin::Script",
-                 "-d",
-                 "<input_file>",
-                 "<input_dir>",
+                 "--chown root:users",
+                 "testfiles/dir/file",
+            ),
+            join(' ',
+                 "$FindBin::Script",
+                 "--chusr root",
+                 "testfiles/dir/",
+            ),
+            join(' ',
+                 "$FindBin::Script",
+                 "--chgrp users",
+                 "testfiles/",
+            ),
+            join(' ',
+                 "$FindBin::Script",
+                 "--chmod u=rwx,go-w,a+X",
+                 "testfiles/link_to_file",
+            ),
+            join(' ',
+                 "$FindBin::Script",
+                 "-o root:users",
+                 "-p u=rwx,a+rX",
+                 "testfiles/dir/",
+                 "testfiles/dir/file",
+            ),
+            join(' ',
+                 "$FindBin::Script",
+                 "-c",
+                 "-g users",
+                 "testfiles/dir/file",
+            ),
+            join(' ',
+                 "$FindBin::Script",
+                 "--rm",
+                 "testfiles/dir/sub_dir/",
+                 "testfiles/link_to_file",
             ),
             join(' ',
                  "$FindBin::Script",
@@ -172,23 +205,34 @@ sub print_usage_and_exit {
                  "List of one or more files to work on."),
             join("\t\n\t\t",
                  "-c, --cat",
-                 "Show contents of the files.",
+                 "Show contents of the files/directories.",
+                 "If the given file path is a symlink, the symlink target will be shown.",
                  "This is the default mode of operations if no other options are specified."),
             join("\t\n\t\t",
                  "-o, --chown <new_owner>:<new_group>",
-                 "Change owner and group of the file."),
+                 "Change owner and group of the file.",
+                 "This option cannot be combined with `--chusr` or `-chgrp`.",
+                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
             join("\t\n\t\t",
                  "-u, --chusr <new_owner>",
-                 "Change owner of the file."),
+                 "Change owner of the file.",
+                 "This option cannot be combined with `--chown`.",
+                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
             join("\t\n\t\t",
                  "-g, --chgrp <new_group>",
-                 "Change group of the file."),
+                 "Change group of the file.",
+                 "This option cannot be combined with `--chown`.",
+                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
             join("\t\n\t\t",
                  "-p, --chmod <new_permissions>",
-                 "Change permissions of the file."),
+                 "Change permissions of the file.",
+                 "Beware the `X` manipulation is supported but presence of any `x` bit on target file is checked only at the very beginning of manipulation, not during after every group of settings.",
+                 "I.e. definition `u=rwx,go=rX` applied to file with current mode `rw-r--r--` will end up with mode `rwxr--r--`, not `rwxr-xr-x` as could be expected.",
+                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
             join("\t\n\t\t",
                  "-d, --rm",
                  "Delete files.",
+                 "If the given file path is a symlink, the symlink itself will be deleted and the target file will not be affected.",
                  "This option cannot be combined with other options."),
             join("\t\n\t\t",
                  "-h, --help",
@@ -274,8 +318,8 @@ sub format_path_tiny_error {
 
     if (blessed $err && $err->isa('Path::Tiny::Error')) {
         return "Operation ".decode_locale_if_necessary($err->{'op'})
-              ." on ".decode_locale_if_necessary($err->{'file'})
-              ."failed: ".decode_locale_if_necessary($err->{'err'});
+              ." on '".decode_locale_if_necessary($err->{'file'})
+              ."' failed: ".decode_locale_if_necessary($err->{'err'});
     } else {
         return $err;
     }
@@ -530,16 +574,16 @@ sub mode_chown {
     my $gid = getgrnam "$gname";
 
     unless (defined($uid)) {
-        die "User '$user' does not exists.";
+        die "User '$user' does not exists.\n";
     }
     unless (defined($gid)) {
-        die "Group '$gname' does not exists.";
+        die "Group '$gname' does not exists.\n";
     }
 
     if (chown($uid, $gid, $file->canonpath) > 0) {
         print_info("Changed ownership of file '".$file->canonpath."' to user '$user' and group '$gname'.");
     } else {
-        die "Change ownership failed on file '".$file->canonpath."'";
+        die "Change ownership failed on file '".$file->canonpath."'\n";
     }
 
 }
@@ -556,13 +600,13 @@ sub mode_chusr {
     my $uid = getpwnam "$user";
 
     unless (defined($uid)) {
-        die "User '$user' does not exists.";
+        die "User '$user' does not exists.\n";
     }
 
     if (chown($uid, -1, $file->canonpath) > 0) {
         print_info("Changed owner on file '".$file->canonpath."' to '$user'.");
     } else {
-        die "Change owner failed on file '".$file->canonpath."'";
+        die "Change owner failed on file '".$file->canonpath."'\n";
     }
 
 }
@@ -579,13 +623,13 @@ sub mode_chgrp {
     my $gid = getgrnam "$gname";
 
     unless (defined($gid)) {
-        die "Group '$gname' does not exists.";
+        die "Group '$gname' does not exists.\n";
     }
 
     if (chown(-1, $gid, $file->canonpath) > 0) {
         print_info("Changed group on file '".$file->canonpath."' to '$gname'.");
     } else {
-        die "Change group failed on file '".$file->canonpath."'";
+        die "Change group failed on file '".$file->canonpath."'\n";
     }
 
 }
@@ -625,13 +669,13 @@ sub mode_rm {
         if(rmdir($file->canonpath)) {
             print_info("Removed directory '".$file->canonpath."'.");
         } else {
-            die decode_locale_if_necessary($!);
+            die decode_locale_if_necessary($!)."\n";
         }
     } else {
         if ($file->remove) {
             print_info("Removed file '".$file->canonpath."'.");
         } else {
-            die decode_locale_if_necessary($!);
+            die decode_locale_if_necessary($!)."\n";
         }
     }
 
@@ -656,7 +700,7 @@ try {
     check_options();
 
 } catch {
-    die decode_locale_if_necessary($_);
+    die decode_locale_if_necessary($_)."\n";
 };
 
 # Do work
@@ -689,7 +733,7 @@ try {
                 mode_chmod($file, $opts->{'chmod'}) if ($opts->{'chmod'});
 
             } else {
-                die "Access to '".real_path_dereference_all_symlinks($file->canonpath)."' is not allowed.";
+                die "Access to '".real_path_dereference_all_symlinks($file->canonpath)."' is not allowed.\n";
             }
 
             if (is_allowed_object_manipulation($file)) {
@@ -698,7 +742,7 @@ try {
                 mode_rm($file) if ($opts->{'rm'});
 
             } else {
-                die "Access to '".real_path_dereference_symlinks_but_last($file->canonpath)."' is not allowed.";
+                die "Access to '".real_path_dereference_symlinks_but_last($file->canonpath)."' is not allowed.\n";
             }
 
         } catch {
