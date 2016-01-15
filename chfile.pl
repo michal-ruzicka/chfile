@@ -20,6 +20,7 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
+use Cwd;
 use File::chmod qw(symchmod getsymchmod);
 use FindBin;
 use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
@@ -275,6 +276,111 @@ sub print_info {
     $msg = decode_locale_if_necessary($msg);
 
     IO::Handle::printflush STDERR "INFO $msg\n";
+
+}
+
+# Path to absolute real path conversion with normalization and real filesystem
+# solving of ALL symlinks / all symlinks BUT THE LAST symlink.
+#
+# 1. path normalization
+#
+# Path normalization is tricky and impossible without filesystem checks: For
+# example having directory structure
+#
+#   ├── dir
+#   │   ├── file
+#   │   └── sub_dir
+#   │       ├── file
+#   │       ├── sub_link_to_file -> file
+#   │       ├── sub_link_to_sub_dir -> ../sub_dir
+#   │       └── sub_sub_dir
+#   │           └── file
+#   └──  link_to_file -> dir/file
+#
+# and path specifications
+#
+#   dir/../dir/file
+#
+# it is not enough to simply collapse dir/../dir/ to dir/ as it will not
+# correctly work for links, i.e. collapsing link_to_sub_dir/../link_to_sub_dir/
+# to link_to_sub_dir/ will change the path target:
+#
+#   $ ls dir/../dir/file
+#   dir/../dir/file        <~~ this is file dir/file
+#
+#   $ ls dir/file
+#   dir/file               <~~ this is file dir/file
+#
+#   $ ls link_to_sub_dir/../link_to_sub_dir/file
+#   ls: cannot access link_to_sub_dir/../link_to_sub_dir/file: No such file or directory
+#
+#   $ ls link_to_sub_dir/file
+#   link_to_sub_dir/file   <~~ this is file dir/sub_dir/file
+#
+# 2. resolving symlinks
+#
+# Two methods of symlink solving are introduced:
+#
+# – The first resolves ALL symlinks including the last component of the path.
+#
+#   The method is useful to work with the target file/directory (to read
+#   contents of the target file/directory, to set attributes/permissions/... on
+#   the target file/directory etc.).
+#
+#   real_path_dereference_all_symlinks($path):
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir
+#     result    /.../dir/sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_link_to_file
+#     result    /.../dir/sub_dir/file
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_sub_dir
+#     result    /.../dir/sub_dir/sub_sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/file
+#     result    /.../dir/sub_dir/file
+#
+# – The second method resolves ALL symlinks BUT the last component of the path.
+#
+#   This method is useful to manipulate the symlink itself (to delete the
+#   symlink, for example) but not the target file/directory.
+#
+#   real_path_dereference_symlinks_but_last($path):
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir
+#     result    /.../dir/sub_dir/sub_link_to_sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_link_to_file
+#     result    /.../dir/sub_dir/sub_link_to_file
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/sub_sub_dir
+#     result    /.../dir/sub_dir/sub_sub_dir
+#
+#     argument  dir/../dir/./sub_dir/sub_link_to_sub_dir/file
+#     result    /.../dir/sub_dir/file
+#
+# args
+#   path to normalize as string
+# returns
+#   normalized path with all symlinks resolved, i.e. even the last symlink in
+#   the path will be resolved
+sub real_path_dereference_all_symlinks {
+
+    my $path = shift @_;
+
+    return decode_locale_if_necessary(Cwd::realpath($path));
+
+}
+# args
+#   path to normalize as string
+# returns
+#   normalized path with all symlinks but the last one resolved
+sub real_path_dereference_symlinks_but_last {
+
+    my $path = shift @_;
+
+    return path($path)->realpath;
 
 }
 
