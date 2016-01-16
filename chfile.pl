@@ -119,7 +119,8 @@ sub print_usage_and_exit {
     my $out = \*STDERR;
 
     my $m = join("\n\t", "$FindBin::Script",
-             "Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.");
+             "Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.",
+             '$Version$');
     if (defined($msg)) {
         chomp $msg;
         $m = "$msg";
