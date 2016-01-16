@@ -634,6 +634,11 @@ sub mode_chgrp {
 
 }
 
+# Change permissions mode of operation:
+# Change permissions of given file to given mode.
+# args
+#   instance of Path::Tiny
+#   permission modification specification as string
 sub mode_chmod {
 
     my ($file, $mode) = @_;
