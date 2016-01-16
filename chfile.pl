@@ -65,14 +65,14 @@ Encode::Locale::decode_argv(Encode::FB_CROAK);
 
 
 # External modules
-use Cwd;
-use File::chmod qw(symchmod getsymchmod);
+use Cwd 2.12;
+use File::chmod 0.40 qw(symchmod getsymchmod);
 use FindBin;
-use Getopt::Long qw(:config gnu_getopt no_ignore_case bundling);
-use IO::Handle;
-use Path::Tiny;
+use Getopt::Long 2.33 qw(:config gnu_getopt no_ignore_case bundling);
+use IO::Handle 1.19;
+use Path::Tiny 0.053;
 use Scalar::Util qw(blessed);
-use Stat::lsMode;
+use Stat::lsMode 0.50;
 use Try::Tiny;
 
 # It is recommended that you explicitly set $File::chmod::UMASK
