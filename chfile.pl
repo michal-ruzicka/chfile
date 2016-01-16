@@ -118,12 +118,15 @@ sub print_usage_and_exit {
     $exit_val = 0 unless(defined($exit_val));
     my $out = \*STDERR;
 
+    my $m = join("\n\t", "$FindBin::Script",
+             "Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.");
     if (defined($msg)) {
         chomp $msg;
-        print $out "$msg\n\n";
+        $m = "$msg";
     }
 
     print $out join("\n\n",
+        $m,
         join("\n\t", 'Usage:',
             join(' ',
                  "$FindBin::Script",

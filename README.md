@@ -1,6 +1,6 @@
 # `chfile.pl`
 
-`chfile.pl` is a simple file manipulation tool implemented in Perl language and
+`chfile.pl` is a simple file manipulation tool implemented in Perl language
 combining selected features of `chmod`, `chown`, `cat`, `ls` and `rm` core
 utils.
 
