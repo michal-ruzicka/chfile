@@ -1,0 +1,10 @@
+# To automatically expand version info in integrated help of chfile.pl, add 
+# following lines to your .git/config file:
+# -------- 8< -------- 8< --------   cut here   -------- 8< -------- 8< --------    
+# [filter "versioner"]
+# 	clean = "perl -pe 's/(\\$Version):[^\\$]+(\\$)/$1$2/g;'"
+# 	smudge = "perl -e 'my $v = `git describe --always`; my $d = `git log --pretty=format:\"%ad\" -1`; chomp $v; while(<STDIN>) { $_ =~ s/(\\$Version)(\\$)/$1: $v ($d) $2/g; print $_; };'"
+# -------- 8< -------- 8< --------   cut here   -------- 8< -------- 8< --------    
+# For more information about Git filters see gitattributes(5) manual page and
+# https://git-scm.com/book/en/v2/Customizing-Git-Git-Attributes
+chfile.pl filter=versioner
