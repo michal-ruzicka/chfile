@@ -670,7 +670,7 @@ sub mode_rm {
 
     my $file = shift @_;
 
-    if ($file->is_dir) {
+    if ($file->is_dir and not -l $file->canonpath) {
         if(rmdir($file->canonpath)) {
             print_info("Removed directory '".$file->canonpath."'.");
         } else {
