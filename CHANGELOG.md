@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- If only `--machine` option is used `--name` mode is implied.
+
 
 ## [v1.1.0] – 2016-01-17
 

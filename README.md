@@ -11,7 +11,7 @@ functionality in any way, or in the *restricted mode*.
 
 To switch to restricted mode a set of filesystem paths patterns have to be
 configured. Consequently no operation will be done by the tool on any filesystem
-path not matching any of these pattern. Moreover, no manipulation of ‘s’ or ‘t’
+path not matching any of these pattern. Moreover, no manipulation of `s` or `t`
 permission will be allowed even on files matching configured allowed patterns.
 
 ## Usage

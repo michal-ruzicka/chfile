@@ -306,14 +306,18 @@ sub print_usage_and_exit {
 # message.
 sub check_options {
 
+    # If only --machine option is specified name mode is implied
+    $opts->{'name'} = 1
+            if ($opts->{'machine'} and scalar(keys($opts)) == 2); # Checking for 2: the --machine option + predefined verbosity level
+
     # If no mode is specified default to name mode
     $opts->{'name'} = 1
-        if (scalar(keys($opts)) == 1); # The only predefined value is verbosity level
+            if (scalar(keys($opts)) == 1); # The only predefined value is verbosity level
 
     print_usage_and_exit() if ($opts->{'help'});
 
     print_usage_and_exit(2, 'Option `--rm` is not compatible with another commands.')
-            if ($opts->{'rm'} and scalar(keys($opts)) != 2); # Checking for 2: the --rm option + predefined verbosity level.
+            if ($opts->{'rm'} and scalar(keys($opts)) != 2); # Checking for 2: the --rm option + predefined verbosity level
 
     if ($opts->{'chown'}) {
         print_usage_and_exit(3, 'Option `--chown` is mutually exclusive with `--chusr` and `--chgrp` options.')
