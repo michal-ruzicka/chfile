@@ -21,9 +21,12 @@ The tools has build-in help. To see usage information run
 `chfile.pl --help`
 
 ```
+chfile.pl
+	Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.
+
 Usage:
-	chfile.pl [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] -- file [ file ... ]
-	chfile.pl [ --rm|-d ] -- file [ file ... ]
+	chfile.pl [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
+	chfile.pl --rm|-d [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl [ --help|-h ]
 
 Examples:
@@ -33,8 +36,8 @@ Examples:
 	chfile.pl --chusr root testfiles/dir/
 	chfile.pl --chgrp users testfiles/
 	chfile.pl --chmod u=rwx,go-w,a+X testfiles/link_to_file
-	chfile.pl -o root:users -p u=rwx,a+rX testfiles/dir/ testfiles/dir/file
-	chfile.pl -c -g users testfiles/dir/file
+	chfile.pl -o root:users -p u=rwx,a+rX -v testfiles/dir/ testfiles/dir/file
+	chfile.pl -s -c -g users testfiles/dir/file
 	chfile.pl --rm testfiles/dir/sub_dir/ testfiles/link_to_file
 	chfile.pl --help
 
@@ -66,6 +69,12 @@ Options:
 		Delete files.
 		If the given file path is a symlink, the symlink itself will be deleted and the target file will not be affected.
 		This option cannot be combined with other options.
+	-v, --verbose
+		Verbose mode. In this mode not only errors and warnings (which is default behaviour) are shown but also information messages are listed.
+		Use of this option overrides `--silent` mode.
+	-s, --silent
+		Silent mode. In this mode no information messages (including errors and warnings) are shown. Success/failure of processing is indicated by return value of the tool.
+		Use of this option overrides `--verbose` mode.
 	-h, --help
 		Print the usage info and exit.
 ```

@@ -90,7 +90,9 @@ $File::chmod::UMASK = 0;
 # Global configuration
 #
 my @files = ();
-my $opts = {};
+my $opts = {
+    'verbose' => 1,
+};
 my @opts_def = (
     'chown|o=s',
     'chusr|u=s',
@@ -98,6 +100,8 @@ my @opts_def = (
     'chmod|p=s',
     'cat|c',
     'rm|d',
+    'verbose|v+',
+    'silent|s' => sub {$opts->{'verbose'} = 0},
     'help|h',
 );
 my $chown_re = qr/(\A[^:\s]+):([^:\s]+)\z/;
@@ -116,133 +120,150 @@ sub print_usage_and_exit {
     my ($exit_val, $msg) = @_;
 
     $exit_val = 0 unless(defined($exit_val));
-    my $out = \*STDERR;
 
-    my $m = join("\n\t", "$FindBin::Script",
-             "Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.",
-             '$Version$');
-    if (defined($msg)) {
-        chomp $msg;
-        $m = "$msg";
+    if ($opts->{'verbose'} >= 1) {
+
+        my $out = \*STDERR;
+
+        my $m = join("\n\t", "$FindBin::Script",
+                 "Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.",
+                 '$Version$');
+        if (defined($msg)) {
+            chomp $msg;
+            $m = "$msg";
+        }
+
+        print $out join("\n\n",
+            $m,
+            join("\n\t", 'Usage:',
+                join(' ',
+                     "$FindBin::Script",
+                     "[ --cat|-c ]",
+                     "{ [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] }",
+                     "[ --chmod|-p <new_permissions> ]",
+                     "[ { --verbose|-v | --silent|-s } ]",
+                     "--",
+                     "file [ file ... ]",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--rm|-d",
+                     "[ { --verbose|-v | --silent|-s } ]",
+                     "--",
+                     "file [ file ... ]",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "[ --help|-h ]",
+                ),
+            ),
+            join("\n\t", 'Examples:',
+                join(' ',
+                     "$FindBin::Script",
+                     "testfiles/",
+                     "testfiles/link_to_file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--cat",
+                     "testfiles/link_to_file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--chown root:users",
+                     "testfiles/dir/file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--chusr root",
+                     "testfiles/dir/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--chgrp users",
+                     "testfiles/",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--chmod u=rwx,go-w,a+X",
+                     "testfiles/link_to_file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "-o root:users",
+                     "-p u=rwx,a+rX",
+                     "-v",
+                     "testfiles/dir/",
+                     "testfiles/dir/file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "-s",
+                     "-c",
+                     "-g users",
+                     "testfiles/dir/file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--rm",
+                     "testfiles/dir/sub_dir/",
+                     "testfiles/link_to_file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--help",
+                ),
+            ),
+            join("\n\t", 'Options:',
+                join("\t\n\t\t",
+                     "file [ file ... ]",
+                     "List of one or more files to work on."),
+                join("\t\n\t\t",
+                     "-c, --cat",
+                     "Show contents of the files/directories.",
+                     "If the given file path is a symlink, the symlink target will be shown.",
+                     "This is the default mode of operations if no other options are specified."),
+                join("\t\n\t\t",
+                     "-o, --chown <new_owner>:<new_group>",
+                     "Change owner and group of the file.",
+                     "This option cannot be combined with `--chusr` or `-chgrp`.",
+                     "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
+                join("\t\n\t\t",
+                     "-u, --chusr <new_owner>",
+                     "Change owner of the file.",
+                     "This option cannot be combined with `--chown`.",
+                     "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
+                join("\t\n\t\t",
+                     "-g, --chgrp <new_group>",
+                     "Change group of the file.",
+                     "This option cannot be combined with `--chown`.",
+                     "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
+                join("\t\n\t\t",
+                     "-p, --chmod <new_permissions>",
+                     "Change permissions of the file.",
+                     "Beware the `X` manipulation is supported but presence of any `x` bit on target file is checked only at the very beginning of manipulation, not during after every group of settings.",
+                     "I.e. definition `u=rwx,go=rX` applied to file with current mode `rw-r--r--` will end up with mode `rwxr--r--`, not `rwxr-xr-x` as could be expected.",
+                     "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
+                join("\t\n\t\t",
+                     "-d, --rm",
+                     "Delete files.",
+                     "If the given file path is a symlink, the symlink itself will be deleted and the target file will not be affected.",
+                     "This option cannot be combined with other options."),
+                join("\t\n\t\t",
+                     "-v, --verbose",
+                     "Verbose mode. In this mode not only errors and warnings (which is default behaviour) are shown but also information messages are listed.",
+                     "Use of this option overrides `--silent` mode."),
+                join("\t\n\t\t",
+                     "-s, --silent",
+                     "Silent mode. In this mode no information messages (including errors and warnings) are shown. Success/failure of processing is indicated by return value of the tool.",
+                     "Use of this option overrides `--verbose` mode."),
+                join("\t\n\t\t",
+                     "-h, --help",
+                     "Print the usage info and exit."),
+            ),
+        )."\n";
+
     }
-
-    print $out join("\n\n",
-        $m,
-        join("\n\t", 'Usage:',
-            join(' ',
-                 "$FindBin::Script",
-                 "[ --cat|-c ]",
-                 "{ [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] }",
-                 "[ --chmod|-p <new_permissions> ]",
-                 "--",
-                 "file [ file ... ]",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "[ --rm|-d ]",
-                 "--",
-                 "file [ file ... ]",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "[ --help|-h ]",
-            ),
-        ),
-        join("\n\t", 'Examples:',
-            join(' ',
-                 "$FindBin::Script",
-                 "testfiles/",
-                 "testfiles/link_to_file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--cat",
-                 "testfiles/link_to_file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--chown root:users",
-                 "testfiles/dir/file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--chusr root",
-                 "testfiles/dir/",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--chgrp users",
-                 "testfiles/",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--chmod u=rwx,go-w,a+X",
-                 "testfiles/link_to_file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "-o root:users",
-                 "-p u=rwx,a+rX",
-                 "testfiles/dir/",
-                 "testfiles/dir/file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "-c",
-                 "-g users",
-                 "testfiles/dir/file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--rm",
-                 "testfiles/dir/sub_dir/",
-                 "testfiles/link_to_file",
-            ),
-            join(' ',
-                 "$FindBin::Script",
-                 "--help",
-            ),
-        ),
-        join("\n\t", 'Options:',
-            join("\t\n\t\t",
-                 "file [ file ... ]",
-                 "List of one or more files to work on."),
-            join("\t\n\t\t",
-                 "-c, --cat",
-                 "Show contents of the files/directories.",
-                 "If the given file path is a symlink, the symlink target will be shown.",
-                 "This is the default mode of operations if no other options are specified."),
-            join("\t\n\t\t",
-                 "-o, --chown <new_owner>:<new_group>",
-                 "Change owner and group of the file.",
-                 "This option cannot be combined with `--chusr` or `-chgrp`.",
-                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
-            join("\t\n\t\t",
-                 "-u, --chusr <new_owner>",
-                 "Change owner of the file.",
-                 "This option cannot be combined with `--chown`.",
-                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
-            join("\t\n\t\t",
-                 "-g, --chgrp <new_group>",
-                 "Change group of the file.",
-                 "This option cannot be combined with `--chown`.",
-                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
-            join("\t\n\t\t",
-                 "-p, --chmod <new_permissions>",
-                 "Change permissions of the file.",
-                 "Beware the `X` manipulation is supported but presence of any `x` bit on target file is checked only at the very beginning of manipulation, not during after every group of settings.",
-                 "I.e. definition `u=rwx,go=rX` applied to file with current mode `rw-r--r--` will end up with mode `rwxr--r--`, not `rwxr-xr-x` as could be expected.",
-                 "If the given file path is a symlink, the symlink target will be manipulated and the symlink itself will not be affected."),
-            join("\t\n\t\t",
-                 "-d, --rm",
-                 "Delete files.",
-                 "If the given file path is a symlink, the symlink itself will be deleted and the target file will not be affected.",
-                 "This option cannot be combined with other options."),
-            join("\t\n\t\t",
-                 "-h, --help",
-                 "Print the usage info and exit."),
-        ),
-    )."\n";
 
     exit($exit_val);
 
@@ -254,12 +275,12 @@ sub check_options {
 
     # If no mode is specified default to cat mode
     $opts->{'cat'} = 1
-        if (scalar(keys($opts)) == 0);
+        if (scalar(keys($opts)) == 1); # The only predefined value is verbosity level
 
     print_usage_and_exit() if ($opts->{'help'});
 
     print_usage_and_exit(2, 'Option `--rm` is not compatible with another commands.')
-            if ($opts->{'rm'} and scalar(keys($opts)) != 1);
+            if ($opts->{'rm'} and scalar(keys($opts)) != 2); # Checking for 2: the --rm option + predefined verbosity level.
 
     if ($opts->{'chown'}) {
         print_usage_and_exit(3, 'Option `--chown` is mutually exclusive with `--chusr` and `--chgrp` options.')
@@ -340,7 +361,7 @@ sub print_error {
     chomp $msg;
     $msg = decode_locale_if_necessary($msg);
 
-    IO::Handle::printflush STDERR "ERROR $msg\n";
+    IO::Handle::printflush STDERR "ERROR $msg\n" if ($opts->{'verbose'} >= 1);
 
 }
 
@@ -354,7 +375,7 @@ sub print_warning {
     chomp $msg;
     $msg = decode_locale_if_necessary($msg);
 
-    IO::Handle::printflush STDERR "WARN $msg\n";
+    IO::Handle::printflush STDERR "WARN $msg\n" if ($opts->{'verbose'} >= 1);
 
 }
 
@@ -368,7 +389,7 @@ sub print_info {
     chomp $msg;
     $msg = decode_locale_if_necessary($msg);
 
-    IO::Handle::printflush STDERR "INFO $msg\n";
+    IO::Handle::printflush STDERR "INFO $msg\n" if ($opts->{'verbose'} >= 2);
 
 }
 
