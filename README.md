@@ -46,6 +46,9 @@ Examples:
 Options:
 	file [ file ... ]
 		List of one or more files to work on.
+	--
+		`End of options` indicator.
+		Any argument after will not be consider a configuration option even though it looks like one.
 	-n, --name
 		Show final real path of the files/directories.
 		If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated).
