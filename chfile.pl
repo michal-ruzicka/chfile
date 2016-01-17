@@ -98,6 +98,7 @@ my @opts_def = (
     'chusr|u=s',
     'chgrp|g=s',
     'chmod|p=s',
+    'name|n',
     'cat|c',
     'rm|d',
     'verbose|v+',
@@ -138,6 +139,7 @@ sub print_usage_and_exit {
             join("\n\t", 'Usage:',
                 join(' ',
                      "$FindBin::Script",
+                     "[ --name|-n ]",
                      "[ --cat|-c ]",
                      "{ [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] }",
                      "[ --chmod|-p <new_permissions> ]",
@@ -161,6 +163,11 @@ sub print_usage_and_exit {
                 join(' ',
                      "$FindBin::Script",
                      "testfiles/",
+                     "testfiles/link_to_file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--name",
                      "testfiles/link_to_file",
                 ),
                 join(' ',
@@ -219,10 +226,14 @@ sub print_usage_and_exit {
                      "file [ file ... ]",
                      "List of one or more files to work on."),
                 join("\t\n\t\t",
+                     "-n, --name",
+                     "Show final real path of the files/direcotires.",
+                     "If the given file path is a symlink, the symlink target will also be shown.",
+                     "This is the default mode of operations if no other options are specified."),
+                join("\t\n\t\t",
                      "-c, --cat",
                      "Show contents of the files/directories.",
-                     "If the given file path is a symlink, the symlink target will be shown.",
-                     "This is the default mode of operations if no other options are specified."),
+                     "If the given file path is a symlink, the symlink target will be shown."),
                 join("\t\n\t\t",
                      "-o, --chown <new_owner>:<new_group>",
                      "Change owner and group of the file.",
@@ -273,8 +284,8 @@ sub print_usage_and_exit {
 # message.
 sub check_options {
 
-    # If no mode is specified default to cat mode
-    $opts->{'cat'} = 1
+    # If no mode is specified default to name mode
+    $opts->{'name'} = 1
         if (scalar(keys($opts)) == 1); # The only predefined value is verbosity level
 
     print_usage_and_exit() if ($opts->{'help'});
@@ -566,6 +577,21 @@ sub is_allowed_object_manipulation {
 
 }
 
+# Name mode of operation:
+# Print file real path. In case of a symlink print also target of the symlink.
+# args
+#   instance of Path::Tiny
+sub mode_name {
+
+    my $file = shift @_;
+
+    my @targets = (real_path_dereference_symlinks_but_last($file->canonpath));
+    push(@targets, real_path_dereference_all_symlinks($file->canonpath)) if (-l $file->canonpath);
+
+    print $file->canonpath.": ".join(' -> ', @targets)."\n";
+
+}
+
 # Cat mode of operation:
 # Print file contents / list directory contents.
 # args
@@ -746,6 +772,9 @@ try {
         try {
 
             if (is_allowed_target_manipulation($file)) {
+
+                # Name
+                mode_name($file) if ($opts->{'name'});
 
                 # Cat
                 mode_cat($file) if ($opts->{'cat'});

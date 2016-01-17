@@ -6,10 +6,14 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- Name mode printing real final path of files.
+  * If the last component of the path is a symlink the real final path of the
+    target is also shown.
 - Verbose/silent mode.
 - Change log.
 
 ### Changed
+- Default mode changed from cat mode to name mode.
 - Processing information messages are not shown unless in verbose mode.
 
 

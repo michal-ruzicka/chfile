@@ -25,12 +25,13 @@ chfile.pl
 	Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.
 
 Usage:
-	chfile.pl [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
+	chfile.pl [ --name|-n ] [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl --rm|-d [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl [ --help|-h ]
 
 Examples:
 	chfile.pl testfiles/ testfiles/link_to_file
+	chfile.pl --name testfiles/link_to_file
 	chfile.pl --cat testfiles/link_to_file
 	chfile.pl --chown root:users testfiles/dir/file
 	chfile.pl --chusr root testfiles/dir/
@@ -44,10 +45,13 @@ Examples:
 Options:
 	file [ file ... ]
 		List of one or more files to work on.
+	-n, --name
+		Show final real path of the files/direcotires.
+		If the given file path is a symlink, the symlink target will also be shown.
+		This is the default mode of operations if no other options are specified.
 	-c, --cat
 		Show contents of the files/directories.
 		If the given file path is a symlink, the symlink target will be shown.
-		This is the default mode of operations if no other options are specified.
 	-o, --chown <new_owner>:<new_group>
 		Change owner and group of the file.
 		This option cannot be combined with `--chusr` or `-chgrp`.
