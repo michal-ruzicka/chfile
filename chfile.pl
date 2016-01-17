@@ -700,6 +700,9 @@ sub mode_chmod {
         if (is_in_restricted_mode() and $mode =~ /[st]/);
 
     try {
+
+        die "No such file or directory\n" unless (-e real_path_dereference_all_symlinks($file->canonpath));
+
         # Is x-bit set somewhere now?
         if (File::chmod::getmod($file->canonpath) & 0111) {
             $mode =~ s/X/x/g;
@@ -708,6 +711,7 @@ sub mode_chmod {
         }
         symchmod($mode, $file->canonpath);
         print_info("Changed permissions on file '".$file->canonpath."' by '$mode' to '".format_mode(File::chmod::getmod($file->canonpath))."'.");
+
     } catch {
         die "Change permissions failed on file '".$file->canonpath."': "
             .decode_locale_if_necessary($_);
