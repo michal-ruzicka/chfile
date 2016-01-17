@@ -823,6 +823,7 @@ try {
     $rv++;
 };
 
+$rv = 253 unless ($rv >= 0 and $rv <= 253);
 exit($rv);
 
 

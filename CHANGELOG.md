@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Processing information messages are not shown unless in verbose mode.
 
 ### Fixed
+- Return value if number of errors during process MOD 253 == 0.
 - Changing permission on dangling symlink will end with error.
   * It is consistant with the commitment to change permission of the link target 
     that really does not exist in this case.
