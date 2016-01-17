@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+
+## [v1.1.0] – 2016-01-17
+
 ### Added
 - Name mode printing real final path of files.
   * If the last component of the path is a symlink the real final path of the
@@ -30,7 +33,8 @@ All notable changes to this project will be documented in this file.
 - The first release.
 
 
-[Unreleased]: https://github.com/michal-ruzicka/chfile/compare/v1.0.0...develop
+[Unreleased]: https://github.com/michal-ruzicka/chfile/compare/v1.1.0...develop
+[v1.1.0]: https://github.com/michal-ruzicka/chfile/compare/v1.0.0...v1.1.0
 
 
 
