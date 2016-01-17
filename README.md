@@ -47,7 +47,7 @@ Options:
 		List of one or more files to work on.
 	-n, --name
 		Show final real path of the files/direcotires.
-		If the given file path is a symlink, the symlink target will also be shown.
+		If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated).
 		This is the default mode of operations if no other options are specified.
 	-c, --cat
 		Show contents of the files/directories.

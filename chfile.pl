@@ -228,7 +228,7 @@ sub print_usage_and_exit {
                 join("\t\n\t\t",
                      "-n, --name",
                      "Show final real path of the files/direcotires.",
-                     "If the given file path is a symlink, the symlink target will also be shown.",
+                     "If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated).",
                      "This is the default mode of operations if no other options are specified."),
                 join("\t\n\t\t",
                      "-c, --cat",
@@ -592,6 +592,7 @@ sub mode_name {
     my $arrow = '->';
     if (-l $file->canonpath) {
         push(@targets, real_path_dereference_all_symlinks($file->canonpath));
+        $arrow = '-[dangling]->' unless (-e "$targets[1]");
     } else {
         die "No such file or directory\n" unless (-e "$targets[0]");
     }
