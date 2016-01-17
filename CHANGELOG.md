@@ -16,6 +16,10 @@ All notable changes to this project will be documented in this file.
 - Default mode changed from cat mode to name mode.
 - Processing information messages are not shown unless in verbose mode.
 
+### Fixed
+- Decoding of special characters in file names in 
+  `real_path_dereference_symlinks_but_last()`.
+
 
 ## v1.0.0 – 2016-01-16
 - The first release.

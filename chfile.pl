@@ -505,7 +505,9 @@ sub real_path_dereference_symlinks_but_last {
 
     my $path = shift @_;
 
-    return path($path)->realpath;
+    my $input_file = path($path);
+
+    return path(decode_locale_if_necessary(Cwd::realpath($input_file->parent)))->child($input_file->basename);
 
 }
 
