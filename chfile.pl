@@ -73,6 +73,7 @@ use IO::Handle 1.19;
 use Path::Tiny 0.053;
 use Scalar::Util qw(blessed);
 use Stat::lsMode 0.50;
+use Sys::Hostname;
 use Try::Tiny;
 
 # It is recommended that you explicitly set $File::chmod::UMASK
@@ -99,6 +100,7 @@ my @opts_def = (
     'chgrp|g=s',
     'chmod|p=s',
     'name|n',
+    'scp|f',
     'cat|c',
     'rm|d',
     'verbose|v+',
@@ -140,6 +142,7 @@ sub print_usage_and_exit {
                 join(' ',
                      "$FindBin::Script",
                      "[ --name|-n ]",
+                     "[ --scp|-f ]",
                      "[ --cat|-c ]",
                      "{ [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] }",
                      "[ --chmod|-p <new_permissions> ]",
@@ -168,6 +171,11 @@ sub print_usage_and_exit {
                 join(' ',
                      "$FindBin::Script",
                      "--name",
+                     "testfiles/link_to_file",
+                ),
+                join(' ',
+                     "$FindBin::Script",
+                     "--scp",
                      "testfiles/link_to_file",
                 ),
                 join(' ',
@@ -227,9 +235,13 @@ sub print_usage_and_exit {
                      "List of one or more files to work on."),
                 join("\t\n\t\t",
                      "-n, --name",
-                     "Show final real path of the files/direcotires.",
+                     "Show final real path of the files/directories.",
                      "If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated).",
                      "This is the default mode of operations if no other options are specified."),
+                join("\t\n\t\t",
+                     "-f, --scp",
+                     "Show final real path of the files/directories together with user's login name and hostname in the format suitable for scp/rsync.",
+                     "If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated)."),
                 join("\t\n\t\t",
                      "-c, --cat",
                      "Show contents of the files/directories.",
@@ -601,6 +613,31 @@ sub mode_name {
 
 }
 
+# scp/rsync name mode of operation:
+# Print file real path. In case of a symlink print also target of the symlink.
+# args
+#   instance of Path::Tiny
+sub mode_scp {
+
+    my $file = shift @_;
+
+    my $login = getpwuid($<) || getlogin || 'login';
+    my $hostname = hostname();
+
+    my $lh = "$login\@$hostname:";
+
+    my @targets = (real_path_dereference_symlinks_but_last($file->canonpath));
+
+    my $arrow = '->';
+    if (-l $file->canonpath) {
+        push(@targets, real_path_dereference_all_symlinks($file->canonpath));
+        $arrow = '-[dangling]->' unless (-e "$targets[1]");
+    }
+
+    print $file->canonpath.": ".join(" $arrow ", map { "$lh'$_'" } @targets)."\n";
+
+}
+
 # Cat mode of operation:
 # Print file contents / list directory contents.
 # args
@@ -788,6 +825,9 @@ try {
 
                 # Name
                 mode_name($file) if ($opts->{'name'});
+
+                # scp name
+                mode_scp($file) if ($opts->{'scp'});
 
                 # Cat
                 mode_cat($file) if ($opts->{'cat'});

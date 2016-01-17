@@ -25,13 +25,14 @@ chfile.pl
 	Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.
 
 Usage:
-	chfile.pl [ --name|-n ] [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
+	chfile.pl [ --name|-n ] [ --scp|-f ] [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl --rm|-d [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl [ --help|-h ]
 
 Examples:
 	chfile.pl testfiles/ testfiles/link_to_file
 	chfile.pl --name testfiles/link_to_file
+	chfile.pl --scp testfiles/link_to_file
 	chfile.pl --cat testfiles/link_to_file
 	chfile.pl --chown root:users testfiles/dir/file
 	chfile.pl --chusr root testfiles/dir/
@@ -46,9 +47,12 @@ Options:
 	file [ file ... ]
 		List of one or more files to work on.
 	-n, --name
-		Show final real path of the files/direcotires.
+		Show final real path of the files/directories.
 		If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated).
 		This is the default mode of operations if no other options are specified.
+	-f, --scp
+		Show final real path of the files/directories together with user's login name and hostname in the format suitable for scp/rsync.
+		If the given file path is a symlink, the symlink target will also be shown (dangling symlinks will be indicated).
 	-c, --cat
 		Show contents of the files/directories.
 		If the given file path is a symlink, the symlink target will be shown.
@@ -92,7 +96,7 @@ the tool install the needed modules using your distribution software management
 tool or install up-to-date versions directly from CPAN:
 
 `cpan Cwd Encode::Locale Encode File::chmod FindBin Getopt::Long IO::Handle
-Path::Tiny Scalar::Util Stat::lsMode Try::Tiny`
+Path::Tiny Scalar::Util Stat::lsMode Sys::Hostname Try::Tiny`
 
 See
   * http://www.cpan.org/
