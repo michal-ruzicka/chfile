@@ -588,9 +588,15 @@ sub mode_name {
     my $file = shift @_;
 
     my @targets = (real_path_dereference_symlinks_but_last($file->canonpath));
-    push(@targets, real_path_dereference_all_symlinks($file->canonpath)) if (-l $file->canonpath);
 
-    print $file->canonpath.": ".join(' -> ', @targets)."\n";
+    my $arrow = '->';
+    if (-l $file->canonpath) {
+        push(@targets, real_path_dereference_all_symlinks($file->canonpath));
+    } else {
+        die "No such file or directory\n" unless (-e "$targets[0]");
+    }
+
+    print $file->canonpath.": ".join(" $arrow ", @targets)."\n";
 
 }
 
