@@ -25,14 +25,14 @@ chfile.pl
 	Simple file manipulation tool implemented in Perl language combining selected features of chmod, chown, cat, ls and rm core utils.
 
 Usage:
-	chfile.pl [ --name|-n ] [ --scp|-f ] [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
+	chfile.pl [ --name|-n ] [ --scp|-f ] [ --cat|-c ] { [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] } [ --chmod|-p <new_permissions> ] [ --machine|--machine-readable|-m ] [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl --rm|-d [ { --verbose|-v | --silent|-s } ] -- file [ file ... ]
 	chfile.pl [ --help|-h ]
 
 Examples:
 	chfile.pl testfiles/ testfiles/link_to_file
 	chfile.pl --name testfiles/link_to_file
-	chfile.pl --scp testfiles/link_to_file
+	chfile.pl --scp -m testfiles/link_to_file
 	chfile.pl --cat testfiles/link_to_file
 	chfile.pl --chown root:users testfiles/dir/file
 	chfile.pl --chusr root testfiles/dir/
@@ -77,6 +77,9 @@ Options:
 		Delete files.
 		If the given file path is a symlink, the symlink itself will be deleted and the target file will not be affected.
 		This option cannot be combined with other options.
+	-m, --machine, --machine-readable
+		Make output of `--name` and `--scp` machine readable by stripping out anything but clean path output string.
+		Symlinks are followed in this mode, i.e. print path of the link target.
 	-v, --verbose
 		Verbose mode. In this mode not only errors and warnings (which is default behaviour) are shown but also information messages are listed.
 		Use of this option overrides `--silent` mode.

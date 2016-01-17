@@ -103,6 +103,7 @@ my @opts_def = (
     'scp|f',
     'cat|c',
     'rm|d',
+    'machine|machine-readable|m',
     'verbose|v+',
     'silent|s' => sub {$opts->{'verbose'} = 0},
     'help|h',
@@ -146,6 +147,7 @@ sub print_usage_and_exit {
                      "[ --cat|-c ]",
                      "{ [ --chown|-o <new_owner>:<new_group> ] | [ --chusr|-u <new_owner> ] [ --chgrp|-g <new_group> ] }",
                      "[ --chmod|-p <new_permissions> ]",
+                     "[ --machine|--machine-readable|-m ]",
                      "[ { --verbose|-v | --silent|-s } ]",
                      "--",
                      "file [ file ... ]",
@@ -175,7 +177,7 @@ sub print_usage_and_exit {
                 ),
                 join(' ',
                      "$FindBin::Script",
-                     "--scp",
+                     "--scp -m",
                      "testfiles/link_to_file",
                 ),
                 join(' ',
@@ -272,6 +274,10 @@ sub print_usage_and_exit {
                      "Delete files.",
                      "If the given file path is a symlink, the symlink itself will be deleted and the target file will not be affected.",
                      "This option cannot be combined with other options."),
+                join("\t\n\t\t",
+                     "-m, --machine, --machine-readable",
+                     "Make output of `--name` and `--scp` machine readable by stripping out anything but clean path output string.",
+                     "Symlinks are followed in this mode, i.e. print path of the link target."),
                 join("\t\n\t\t",
                      "-v, --verbose",
                      "Verbose mode. In this mode not only errors and warnings (which is default behaviour) are shown but also information messages are listed.",
@@ -609,7 +615,11 @@ sub mode_name {
         die "No such file or directory\n" unless (-e "$targets[0]");
     }
 
-    print $file->canonpath.": ".join(" $arrow ", @targets)."\n";
+    if ($opts->{'machine'}) {
+        print "$targets[scalar(@targets-1)]\n";
+    } else {
+        print $file->canonpath.": ".join(" $arrow ", @targets)."\n";
+    }
 
 }
 
@@ -634,7 +644,13 @@ sub mode_scp {
         $arrow = '-[dangling]->' unless (-e "$targets[1]");
     }
 
-    print $file->canonpath.": ".join(" $arrow ", map { "$lh'$_'" } @targets)."\n";
+    @targets = map { "$lh'$_'" } @targets;
+
+    if ($opts->{'machine'}) {
+        print "$targets[scalar(@targets-1)]\n";
+    } else {
+        print $file->canonpath.": ".join(" $arrow ", @targets)."\n";
+    }
 
 }
 
